@@ -7,6 +7,7 @@ const WhopProvider = ({ children }) => {
 };
 
 const WhopAppWrapper = () => {
+  console.log('WhopAppWrapper rendering');
   return (
     <WhopProvider>
       <App />

@@ -1,6 +1,6 @@
-// Real Whop API integration with fallback
-// Note: In production, this will use the real Whop API
-// For development, it falls back to mock responses
+// Whop API integration with direct HTTP calls
+// Uses real Whop API when credentials are available
+// Falls back to mock responses for development
 
 class WhopService {
   constructor() {
@@ -53,19 +53,35 @@ class WhopService {
       throw new Error('Whop SDK not initialized');
     }
 
-    if (this.isMock) {
-      return this.getMockCourse(courseData);
-    }
-
     try {
-      // For now, using mock responses to ensure app works
-      // In production, this would make real API calls to Whop
-      console.log('Creating course with Whop API:', courseData.title);
-      
-      // Simulate API delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      return this.getMockCourse(courseData);
+      if (this.isMock) {
+        console.log('Creating course with mock data:', courseData.title);
+        await new Promise(resolve => setTimeout(resolve, 1000));
+        return this.getMockCourse(courseData);
+      }
+
+      // Real Whop API call
+      const response = await fetch('https://api.whop.com/api/v2/courses', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: courseData.title,
+          experience_id: this.userExperienceId,
+          description: courseData.description || '',
+          status: 'draft'
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const course = await response.json();
+      console.log('Course created successfully:', course);
+      return course;
     } catch (error) {
       console.error('Error creating course:', error);
       // Fallback to mock data if API fails

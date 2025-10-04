@@ -19,6 +19,9 @@ const App = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+
+  // Debug logging
+  console.log('App component rendering, currentStep:', currentStep);
   
   // Step 1: Keywords Input
   const [keywords, setKeywords] = useState('');
