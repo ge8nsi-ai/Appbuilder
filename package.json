@@ -13,19 +13,16 @@
     "start": "vite preview --port 3000"
   },
   "dependencies": {
-    "react": "^18.2.0",
-    "react-dom": "^18.2.0",
-    "@whop/react": "^0.2.46",
-    "@whop/api": "^0.0.51",
-    "@whop/frosted-ui": "^0.0.1-canary.24",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "@google/generative-ai": "^0.2.1",
     "lucide-react": "^0.263.1",
     "react-markdown": "^9.0.1",
     "file-saver": "^2.0.5"
   },
   "devDependencies": {
-    "@types/react": "^18.2.15",
-    "@types/react-dom": "^18.2.7",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^4.0.3",
     "eslint": "^8.45.0",
     "eslint-plugin-react": "^7.32.2",
@@ -42,5 +39,9 @@
     "automation"
   ],
   "author": "UVZ Course Launchpad AI",
-  "license": "MIT"
+  "license": "MIT",
+  "overrides": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  }
 }
