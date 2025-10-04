@@ -1,0 +1,105 @@
+{
+  "app_name": "UVZ_Course_Launchpad_AI",
+  "platform": "Whop App (iFrame)",
+  "goal": "Automate the entire digital product creation and listing process on Whop, starting from a user's Unique Value Zone (UVZ), with no required human content creation.",
+  "required_integrations": [
+    "Whop SDK (for API access to Courses, Products, etc.)",
+    "Whop UI Components (for seamless UI/UX)",
+    "External AI Service (e.g., Gemini API, for UVZ analysis and content generation)"
+  ],
+  "user_flow_steps": [
+    {
+      "step_id": 1,
+      "name": "UVZ_Input_Collection",
+      "description": "User provides foundational data to define their Unique Value Zone.",
+      "ui_components": [
+        {"type": "Whop_Input_Textarea", "label": "Skills & Expertise", "placeholder": "Example: Python, E-commerce, High-Ticket Sales"},
+        {"type": "Whop_Input_Textarea", "label": "Passions & Interests", "placeholder": "Example: Fitness, Cryptocurrency, Personal Finance"},
+        {"type": "Whop_Input_Textarea", "label": "Proven Results/Solutions", "placeholder": "Example: Helped 10 clients reach $10k/month, Lost 50 lbs in 90 days"}
+      ]
+    },
+    {
+      "step_id": 2,
+      "name": "AI_UVZ_Synthesis_&_Product_Selection",
+      "description": "AI (Gemini 2.5 Flash) analyzes input to determine the most profitable course concept.",
+      "ai_prompt_template": {
+        "model": "gemini-2.5-flash",
+        "role": "Expert Digital Product Strategist",
+        "instruction": "Analyze the user's input (Skills, Passions, Results) to define their Unique Value Zone (UVZ). Based on this UVZ, generate three (3) distinct, high-demand digital course ideas, each with a compelling promise, a target audience, and a suggested price point (>$97). Output MUST be in a structured JSON array for selection."
+      },
+      "output_schema": {
+        "type": "array",
+        "items": {
+          "course_name": "string",
+          "core_promise": "string",
+          "target_audience": "string",
+          "price_usd": "integer"
+        }
+      },
+      "ui_components": [
+        {"type": "Whop_Card_Selector", "label": "Select Your UVZ Course Concept", "data_source": "AI_Generated_Concepts"}
+      ]
+    },
+    {
+      "step_id": 3,
+      "name": "AI_Course_Content_Generation",
+      "description": "AI generates all content for the chosen course concept. This step is fully automated after selection.",
+      "prerequisites": ["UVZ_Input_Collection", "AI_UVZ_Synthesis_&_Product_Selection"],
+      "ai_prompt_template": {
+        "model": "gemini-2.5-flash",
+        "role": "Senior Course Designer & Copywriter",
+        "instruction": "Based on the selected course name and core promise, generate a full course structure. Include 5 Chapters (Modules) and 3 Lessons (Text-type, 500-1000 words each) for *each* chapter. Also generate a high-converting Sales Page Copy (VSL script format) and a 5-part Email Nurture Sequence. Output MUST be a structured JSON object for direct API consumption."
+      },
+      "output_schema": {
+        "course_title": "string",
+        "chapters": [
+          {"chapter_title": "string", "lessons": [{"lesson_title": "string", "content": "long_string_markdown"}]},
+          // ... 4 more chapters
+        ],
+        "sales_page_copy": "long_string_markdown_vsl_script",
+        "email_nurture": [{"subject": "string", "body": "long_string_markdown"}]
+      }
+    },
+    {
+      "step_id": 4,
+      "name": "Whop_API_Course_Creation",
+      "description": "The application makes API calls to Whop to create the course and product.",
+      "actions": [
+        {
+          "action": "whopSdk.courses.createCourse",
+          "payload": {"title": "{course_title}", "experience_id": "user_whop_experience_id"}
+        },
+        {
+          "action": "whopSdk.courses.createChapter",
+          "loop_through": "chapters",
+          "payload": {"courseId": "new_course_id", "title": "{chapter_title}"}
+        },
+        {
+          "action": "whopSdk.courses.createLesson",
+          "loop_through": "lessons_in_chapter",
+          "payload": {"chapterId": "new_chapter_id", "title": "{lesson_title}", "content": "{content}", "lessonType": "text"}
+        },
+        {
+          "action": "whopSdk.products.createProduct",
+          "payload": {
+            "name": "{course_title} - Premium Access",
+            "price": "{price_usd}",
+            "description": "{sales_page_copy} (first 500 chars)",
+            "delivery_type": "course_access"
+          }
+        }
+      ]
+    },
+    {
+      "step_id": 5,
+      "name": "Launch_Checklist_Display",
+      "description": "Present the user with a final launch checklist and marketing assets.",
+      "ui_components": [
+        {"type": "Whop_Alert_Success", "message": "Your course is LIVE and ready to sell on Whop!"},
+        {"type": "Whop_Download_Button", "label": "Download Full Sales Script (VSL)", "data": "sales_page_copy"},
+        {"type": "Whop_Download_Button", "label": "Download 5-Part Email Nurture Sequence", "data": "email_nurture"},
+        {"type": "Whop_Link_Button", "label": "View Live Whop Course", "href": "whop_course_url"}
+      ]
+    }
+  ]
+}
