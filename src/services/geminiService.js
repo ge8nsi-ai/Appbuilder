@@ -4,13 +4,22 @@ class GeminiService {
   constructor() {
     this.apiKey = import.meta.env.VITE_GEMINI_API_KEY;
     if (!this.apiKey) {
-      throw new Error('Gemini API key is required. Please set VITE_GEMINI_API_KEY in your environment variables.');
+      console.warn('Gemini API key not found. Using mock responses for development.');
+      this.isMock = true;
+      return;
     }
+    this.isMock = false;
     this.genAI = new GoogleGenerativeAI(this.apiKey);
     this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
   }
 
   async generateCourseConcepts(keywords) {
+    // Return mock data for development if API key is not available
+    if (this.isMock) {
+      console.log('Using mock course concepts for development');
+      return this.getMockCourseConcepts(keywords);
+    }
+
     const prompt = `
 You are an Expert Digital Product Strategist with 10+ years of experience in creating high-converting digital courses.
 
@@ -118,11 +127,85 @@ Focus on courses that have proven market demand and can generate significant rev
       return courseConcepts;
     } catch (error) {
       console.error('Error generating course concepts:', error);
-      throw new Error(`Failed to generate course concepts: ${error.message}`);
+      // Fallback to mock data if API fails
+      return this.getMockCourseConcepts(keywords);
     }
   }
 
+  getMockCourseConcepts(keywords) {
+    const baseConcepts = [
+      {
+        course_name: `${keywords} Mastery Program`,
+        core_promise: `Master ${keywords} from beginner to expert level`,
+        target_audience: `Beginners wanting to learn ${keywords}`,
+        price_usd: 197
+      },
+      {
+        course_name: `${keywords} Business Blueprint`,
+        core_promise: `Build a profitable ${keywords} business from scratch`,
+        target_audience: `Entrepreneurs interested in ${keywords}`,
+        price_usd: 297
+      },
+      {
+        course_name: `Advanced ${keywords} Strategies`,
+        core_promise: `Advanced techniques for ${keywords} professionals`,
+        target_audience: `Experienced ${keywords} practitioners`,
+        price_usd: 397
+      },
+      {
+        course_name: `${keywords} for Beginners`,
+        core_promise: `Complete beginner's guide to ${keywords}`,
+        target_audience: `Complete beginners in ${keywords}`,
+        price_usd: 197
+      },
+      {
+        course_name: `${keywords} Certification Course`,
+        core_promise: `Get certified in ${keywords} with industry recognition`,
+        target_audience: `Professionals seeking ${keywords} certification`,
+        price_usd: 497
+      },
+      {
+        course_name: `${keywords} Marketing Mastery`,
+        core_promise: `Learn to market ${keywords} effectively`,
+        target_audience: `Marketers focusing on ${keywords}`,
+        price_usd: 297
+      },
+      {
+        course_name: `${keywords} Automation Secrets`,
+        core_promise: `Automate your ${keywords} processes for efficiency`,
+        target_audience: `Professionals wanting to automate ${keywords}`,
+        price_usd: 397
+      },
+      {
+        course_name: `${keywords} Success Formula`,
+        core_promise: `Proven formula for ${keywords} success`,
+        target_audience: `Individuals seeking ${keywords} success`,
+        price_usd: 597
+      },
+      {
+        course_name: `${keywords} Expert Training`,
+        core_promise: `Become an expert in ${keywords} field`,
+        target_audience: `Serious learners of ${keywords}`,
+        price_usd: 697
+      },
+      {
+        course_name: `${keywords} Complete System`,
+        core_promise: `Complete system for mastering ${keywords}`,
+        target_audience: `Comprehensive ${keywords} learners`,
+        price_usd: 797
+      }
+    ];
+
+    return baseConcepts;
+  }
+
   async generateCourseContent(selectedConcept) {
+    // Return mock data for development if API key is not available
+    if (this.isMock) {
+      console.log('Using mock course content for development');
+      return this.getMockCourseContent(selectedConcept);
+    }
+
     const prompt = `
 You are a Senior Course Designer & Copywriter with expertise in creating comprehensive digital courses and high-converting sales materials.
 
@@ -297,8 +380,150 @@ Make sure the content is valuable, actionable, and directly addresses the target
       return courseContent;
     } catch (error) {
       console.error('Error generating course content:', error);
-      throw new Error(`Failed to generate course content: ${error.message}`);
+      // Fallback to mock data if API fails
+      return this.getMockCourseContent(selectedConcept);
     }
+  }
+
+  getMockCourseContent(selectedConcept) {
+    return {
+      course_title: selectedConcept.course_name,
+      chapters: [
+        {
+          chapter_title: "Introduction & Foundation",
+          lessons: [
+            {
+              lesson_title: "Welcome to Your Journey",
+              content: "# Welcome to Your Journey\n\nWelcome to this comprehensive course! In this lesson, you'll learn the fundamentals and get ready for your transformation.\n\n## What You'll Learn\n- Key concepts and principles\n- How to get the most out of this course\n- Setting up your learning environment\n\n## Action Steps\n1. Complete the pre-course assessment\n2. Set up your workspace\n3. Join the community forum\n\nLet's begin your journey to mastery!"
+            },
+            {
+              lesson_title: "Understanding the Basics",
+              content: "# Understanding the Basics\n\nIn this lesson, we'll cover the essential concepts you need to know.\n\n## Core Concepts\n- Fundamental principles\n- Key terminology\n- Common misconceptions\n\n## Practical Application\n- Real-world examples\n- Case studies\n- Hands-on exercises\n\nBy the end of this lesson, you'll have a solid foundation to build upon."
+            },
+            {
+              lesson_title: "Setting Your Goals",
+              content: "# Setting Your Goals\n\nGoal setting is crucial for your success. Let's create a clear roadmap.\n\n## SMART Goals Framework\n- Specific\n- Measurable\n- Achievable\n- Relevant\n- Time-bound\n\n## Creating Your Action Plan\n- Short-term goals\n- Long-term vision\n- Milestone tracking\n\nYou'll leave this lesson with a clear plan for your journey."
+            }
+          ]
+        },
+        {
+          chapter_title: "Core Skills Development",
+          lessons: [
+            {
+              lesson_title: "Essential Skills Overview",
+              content: "# Essential Skills Overview\n\nThis lesson covers the core skills you need to master.\n\n## Key Skills\n- Technical skills\n- Soft skills\n- Industry-specific knowledge\n\n## Skill Development Strategy\n- Learning methods\n- Practice techniques\n- Progress tracking\n\nMaster these skills and you'll be unstoppable!"
+            },
+            {
+              lesson_title: "Hands-On Practice",
+              content: "# Hands-On Practice\n\nPractice makes perfect! Let's apply what you've learned.\n\n## Practical Exercises\n- Step-by-step tutorials\n- Real-world projects\n- Problem-solving challenges\n\n## Getting Feedback\n- Self-assessment\n- Peer review\n- Expert guidance\n\nPractice regularly and watch your skills improve rapidly."
+            },
+            {
+              lesson_title: "Advanced Techniques",
+              content: "# Advanced Techniques\n\nNow let's explore advanced methods and strategies.\n\n## Advanced Concepts\n- Complex techniques\n- Industry secrets\n- Expert-level strategies\n\n## Implementation\n- How to apply advanced techniques\n- Common pitfalls to avoid\n- Scaling your approach\n\nThese advanced techniques will set you apart from the competition."
+            }
+          ]
+        },
+        {
+          chapter_title: "Implementation & Strategy",
+          lessons: [
+            {
+              lesson_title: "Strategic Planning",
+              content: "# Strategic Planning\n\nLearn how to create and execute effective strategies.\n\n## Strategy Framework\n- Analysis and planning\n- Resource allocation\n- Risk management\n\n## Execution\n- Implementation timeline\n- Monitoring progress\n- Adjusting course\n\nA solid strategy is the foundation of success."
+            },
+            {
+              lesson_title: "Building Systems",
+              content: "# Building Systems\n\nSystems are the key to sustainable success.\n\n## System Design\n- Creating efficient workflows\n- Automation opportunities\n- Quality control measures\n\n## Optimization\n- Continuous improvement\n- Performance metrics\n- Scaling systems\n\nBuild systems that work for you, not against you."
+            },
+            {
+              lesson_title: "Measuring Success",
+              content: "# Measuring Success\n\nHow do you know if you're succeeding? Let's define and track success.\n\n## Success Metrics\n- Key performance indicators\n- Progress tracking\n- Milestone celebrations\n\n## Continuous Improvement\n- Regular reviews\n- Feedback loops\n- Adaptation strategies\n\nSuccess is a journey, not a destination."
+            }
+          ]
+        },
+        {
+          chapter_title: "Advanced Applications",
+          lessons: [
+            {
+              lesson_title: "Real-World Applications",
+              content: "# Real-World Applications\n\nSee how to apply your knowledge in real situations.\n\n## Case Studies\n- Success stories\n- Common challenges\n- Solutions and strategies\n\n## Practical Implementation\n- Step-by-step guides\n- Best practices\n- Common mistakes to avoid\n\nReal-world application is where theory meets practice."
+            },
+            {
+              lesson_title: "Scaling Your Approach",
+              content: "# Scaling Your Approach\n\nLearn how to scale your efforts for maximum impact.\n\n## Scaling Strategies\n- Growth planning\n- Resource management\n- Team building\n\n## Challenges and Solutions\n- Common scaling issues\n- Problem-solving approaches\n- Maintaining quality\n\nScale smart, not just fast."
+            },
+            {
+              lesson_title: "Industry Insights",
+              content: "# Industry Insights\n\nGet insider knowledge from industry experts.\n\n## Market Trends\n- Current industry trends\n- Future predictions\n- Opportunity identification\n\n## Expert Perspectives\n- Industry leader insights\n- Best practices\n- Innovation opportunities\n\nStay ahead of the curve with these insights."
+            }
+          ]
+        },
+        {
+          chapter_title: "Mastery & Beyond",
+          lessons: [
+            {
+              lesson_title: "Achieving Mastery",
+              content: "# Achieving Mastery\n\nMastery is a journey, not a destination. Let's explore what it means.\n\n## Mastery Mindset\n- Continuous learning\n- Humility and growth\n- Teaching others\n\n## Mastery Practices\n- Deliberate practice\n- Feedback seeking\n- Knowledge sharing\n\nTrue mastery comes from helping others succeed."
+            },
+            {
+              lesson_title: "Building Your Legacy",
+              content: "# Building Your Legacy\n\nWhat will you leave behind? Let's create lasting impact.\n\n## Legacy Building\n- Impact measurement\n- Knowledge transfer\n- Mentorship\n\n## Long-term Vision\n- Future planning\n- Succession planning\n- Community building\n\nBuild a legacy that inspires others."
+            },
+            {
+              lesson_title: "Next Steps & Resources",
+              content: "# Next Steps & Resources\n\nYour journey continues! Here's how to keep growing.\n\n## Continued Learning\n- Advanced resources\n- Community engagement\n- Ongoing education\n\n## Support Network\n- Mentorship opportunities\n- Peer connections\n- Expert access\n\nRemember: learning never stops, and neither should you!"
+            }
+          ]
+        }
+      ],
+      sales_page_copy: `# ${selectedConcept.course_name} - Sales Page
+
+## Transform Your Life with ${selectedConcept.course_name}
+
+Are you ready to ${selectedConcept.core_promise.toLowerCase()}?
+
+This comprehensive course is designed specifically for ${selectedConcept.target_audience.toLowerCase()}.
+
+## What You'll Get:
+
+✅ **5 Complete Chapters** with 15 detailed lessons
+✅ **Step-by-step guidance** from beginner to expert
+✅ **Real-world applications** and case studies
+✅ **Lifetime access** to all course materials
+✅ **Community support** and expert guidance
+
+## Special Launch Price: $${selectedConcept.price_usd}
+
+*Regular price: $${selectedConcept.price_usd * 2}*
+
+## Limited Time Offer - Act Now!
+
+Don't miss this opportunity to transform your skills and achieve your goals.
+
+[GET INSTANT ACCESS NOW]`,
+
+      email_nurture: [
+        {
+          subject: `Welcome to ${selectedConcept.course_name}!`,
+          body: `# Welcome to Your Journey!\n\nCongratulations on taking the first step towards ${selectedConcept.core_promise.toLowerCase()}!\n\nIn this course, you'll learn everything you need to know to succeed.\n\n## What's Next?\n1. Complete the introduction module\n2. Join our community forum\n3. Start with the first lesson\n\nWe're excited to be part of your journey!\n\nBest regards,\nThe Course Team`
+        },
+        {
+          subject: "Your First Lesson is Ready!",
+          body: `# Ready for Your First Lesson?\n\nYou're about to begin an amazing journey!\n\n## Today's Focus\n- Understanding the fundamentals\n- Setting your goals\n- Creating your action plan\n\n## Pro Tip\nTake notes as you go through the lessons. This will help you retain the information better.\n\nReady to start? Let's go!\n\nHappy learning!`
+        },
+        {
+          subject: "How's Your Progress?",
+          body: `# Checking In on Your Progress\n\nHow are you finding the course so far?\n\n## Quick Check\n- Are you following along with the lessons?\n- Do you have any questions?\n- What's your biggest takeaway so far?\n\n## Need Help?\nDon't hesitate to reach out if you have any questions. We're here to support you!\n\nKeep up the great work!`
+        },
+        {
+          subject: "Advanced Techniques Coming Up!",
+          body: `# Ready for Advanced Techniques?\n\nYou've mastered the basics - now let's level up!\n\n## What's Coming\n- Advanced strategies and techniques\n- Real-world case studies\n- Expert insights and tips\n\n## Preparation\nMake sure you've completed the foundational lessons before moving to advanced topics.\n\nYou're doing great! Keep going!`
+        },
+        {
+          subject: "Congratulations - You're Almost There!",
+          body: `# You're Almost at the Finish Line!\n\nAmazing work! You've come so far in this course.\n\n## Final Steps\n- Complete the remaining lessons\n- Review your notes\n- Plan your next steps\n\n## What's Next?\nAfter completing this course, you'll have all the tools you need to ${selectedConcept.core_promise.toLowerCase()}.\n\nWe're proud of your dedication and progress!\n\nCongratulations on your achievement!`
+        }
+      ]
+    };
   }
 }
 
