@@ -1,18 +1,8 @@
 import React from 'react';
 import App from '../App';
 
-// Mock WhopProvider for development - will be replaced with real @whop/react in production
-const WhopProvider = ({ children }) => {
-  return <>{children}</>;
-};
-
 const WhopAppWrapper = () => {
-  console.log('WhopAppWrapper rendering');
-  return (
-    <WhopProvider>
-      <App />
-    </WhopProvider>
-  );
+  return <App />;
 };
 
 export default WhopAppWrapper;

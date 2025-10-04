@@ -1,27 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import StepIndicator from './components/StepIndicator';
-import InputTextarea from './components/InputTextarea';
-import CardSelector from './components/CardSelector';
-import Alert from './components/Alert';
-import DownloadButton from './components/DownloadButton';
 import geminiService from './services/geminiService';
 import whopService from './services/whopService';
 
-// Mock Whop hooks for development - will be replaced with real @whop/react in production
-const useWhop = () => ({
-  token: import.meta.env.VITE_WHOP_API_KEY || 'fUaz0J7H-ixhluIyo7FpGhhDSBa_50_5Cw6xlA48E38',
-  experienceId: import.meta.env.VITE_WHOP_COMPANY_ID || 'biz_qBykJdUrk3W1wv',
-  appId: import.meta.env.VITE_WHOP_APP_ID || 'app_1CSGwlh2Of6r50'
-});
-
 const App = () => {
-  const whop = useWhop();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
-
-  // Debug logging
-  console.log('App component rendering, currentStep:', currentStep);
   
   // Step 1: Keywords Input
   const [keywords, setKeywords] = useState('');
@@ -42,37 +26,36 @@ const App = () => {
   const totalSteps = 5;
 
   useEffect(() => {
-    // Initialize Whop SDK when app loads
+    // Initialize Whop service
     const initializeWhop = async () => {
       try {
-        await whopService.initialize(whop);
+        await whopService.initialize();
+        console.log('Whop service initialized successfully');
       } catch (error) {
-        console.error('Failed to initialize Whop SDK:', error);
-        setError('Failed to initialize Whop SDK. Please refresh the page.');
+        console.error('Failed to initialize Whop service:', error);
+        setError('Failed to initialize Whop service. Please refresh the page.');
       }
     };
-    
-    if (whop) {
-      initializeWhop();
-    }
-  }, [whop]);
+
+    initializeWhop();
+  }, []);
 
   const handleStep1Next = async () => {
-    // Validate input
     if (!keywords.trim()) {
-      setError('Please enter at least 1-2 keywords before proceeding.');
+      setError('Please enter at least 1-2 keywords');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
-      const concepts = await geminiService.generateCourseConcepts(keywords.trim());
+      const concepts = await geminiService.generateCourseConcepts(keywords);
       setCourseConcepts(concepts);
       setCurrentStep(2);
     } catch (error) {
-      setError(error.message);
+      console.error('Error generating concepts:', error);
+      setError('Failed to generate course concepts. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -80,241 +63,246 @@ const App = () => {
 
   const handleStep2Next = async () => {
     if (selectedConceptIndex === null) {
-      setError('Please select a course concept before proceeding.');
+      setError('Please select a course concept');
       return;
     }
-    
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const selectedConcept = courseConcepts[selectedConceptIndex];
       const content = await geminiService.generateCourseContent(selectedConcept);
       setCourseContent(content);
       setCurrentStep(3);
     } catch (error) {
-      setError(error.message);
+      console.error('Error generating content:', error);
+      setError('Failed to generate course content. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleStep3Next = async () => {
+    if (!courseContent) {
+      setError('No course content available');
+      return;
+    }
+
     setLoading(true);
     setError(null);
-    
+
     try {
       const selectedConcept = courseConcepts[selectedConceptIndex];
-      const courseData = await whopService.createCompleteCourse(courseContent, selectedConcept);
-      setCreatedCourse(courseData);
-      
-      // Prepare launch data
-      setLaunchData({
-        courseUrl: courseData.courseUrl,
-        productUrl: courseData.productUrl,
-        salesPageCopy: courseContent.sales_page_copy,
-        emailNurture: courseContent.email_nurture
-      });
-      
+      const course = await whopService.createCompleteCourse(courseContent, selectedConcept);
+      setCreatedCourse(course);
       setCurrentStep(4);
     } catch (error) {
-      setError(error.message);
+      console.error('Error creating course:', error);
+      setError('Failed to create course. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
   const handleStep4Next = () => {
+    if (!createdCourse) {
+      setError('No course created');
+      return;
+    }
+
+    // Generate launch data
+    const launch = {
+      courseUrl: createdCourse.course?.url || '#',
+      productUrl: createdCourse.product?.url || '#',
+      vslScript: courseContent?.vslScript || '',
+      emailSequence: courseContent?.emailSequence || []
+    };
+    
+    setLaunchData(launch);
     setCurrentStep(5);
   };
 
+  const resetApp = () => {
+    setCurrentStep(1);
+    setKeywords('');
+    setCourseConcepts([]);
+    setSelectedConceptIndex(null);
+    setCourseContent(null);
+    setCreatedCourse(null);
+    setLaunchData(null);
+    setError(null);
+  };
+
   const renderStep1 = () => (
-    <div className="fade-in">
+    <div className="step-container">
       <h2>Enter Your Keywords</h2>
-      <p>Simply enter 1-2 keywords related to your expertise or interests. Our AI will generate 10 profitable course concepts for you!</p>
+      <p>Enter 1-2 keywords to generate 10 course concepts related to your unique value zone.</p>
       
-      <div className="form-group">
-        <label className="form-label">
-          Keywords <span style={{ color: '#dc3545', marginLeft: '4px' }}>*</span>
-        </label>
+      <div className="input-group">
         <input
-          className="form-textarea"
           type="text"
-          placeholder="Example: fitness, cryptocurrency, e-commerce, python, marketing, sales, health, finance, technology, business"
           value={keywords}
           onChange={(e) => setKeywords(e.target.value)}
-          required
-          style={{ minHeight: '60px', padding: '15px' }}
+          placeholder="e.g., fitness, productivity, marketing"
+          className="keyword-input"
         />
-        <small style={{ color: '#6c757d', fontSize: '0.9rem', marginTop: '5px', display: 'block' }}>
-          💡 Tip: Use 1-2 keywords like "fitness", "cryptocurrency", "e-commerce", "python", "marketing", etc.
-        </small>
       </div>
       
-      <div style={{ textAlign: 'right', marginTop: '30px' }}>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleStep1Next}
-          disabled={loading}
-        >
-          {loading ? 'Generating 10 Course Concepts...' : 'Generate 10 Course Concepts →'}
-        </button>
-      </div>
+      <button 
+        onClick={handleStep1Next} 
+        disabled={loading || !keywords.trim()}
+        className="next-button"
+      >
+        {loading ? 'Generating...' : 'Generate Course Concepts'}
+      </button>
     </div>
   );
 
   const renderStep2 = () => (
-    <div className="fade-in">
+    <div className="step-container">
       <h2>Choose Your Course Concept</h2>
-      <p>Based on your keywords "{keywords}", we've generated 10 high-demand course concepts. Select the one that resonates most with you.</p>
+      <p>Select one of the 10 AI-generated course concepts:</p>
       
-      <CardSelector
-        label="Select Your Course Concept"
-        options={courseConcepts}
-        selectedValue={selectedConceptIndex}
-        onSelect={setSelectedConceptIndex}
-        loading={loading}
-      />
-      
-      <div style={{ textAlign: 'right', marginTop: '30px' }}>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleStep2Next}
-          disabled={loading || selectedConceptIndex === null}
-        >
-          {loading ? 'Generating Course Content...' : 'Create Full Course →'}
-        </button>
+      <div className="concepts-grid">
+        {courseConcepts.map((concept, index) => (
+          <div
+            key={index}
+            className={`concept-card ${selectedConceptIndex === index ? 'selected' : ''}`}
+            onClick={() => setSelectedConceptIndex(index)}
+          >
+            <h3>{concept.title}</h3>
+            <p>{concept.description}</p>
+            <div className="concept-meta">
+              <span className="target-audience">👥 {concept.targetAudience}</span>
+              <span className="price-point">💰 {concept.pricePoint}</span>
+            </div>
+          </div>
+        ))}
       </div>
+      
+      <button 
+        onClick={handleStep2Next} 
+        disabled={loading || selectedConceptIndex === null}
+        className="next-button"
+      >
+        {loading ? 'Generating Content...' : 'Create Course Content'}
+      </button>
     </div>
   );
 
   const renderStep3 = () => (
-    <div className="fade-in">
-      <h2>Course Content Generated!</h2>
-      <p>Your complete course structure has been created with 5 chapters and 15 lessons.</p>
+    <div className="step-container">
+      <h2>Course Content Generated</h2>
+      <p>Your complete course structure has been created:</p>
       
-      <div className="alert alert-success">
-        ✅ Course Structure Created Successfully!
-        <br />
-        📚 {courseContent.chapters.length} Chapters
-        <br />
-        📖 {courseContent.chapters.reduce((total, chapter) => total + chapter.lessons.length, 0)} Lessons
-        <br />
-        📧 5-Part Email Nurture Sequence
-        <br />
-        📄 High-Converting Sales Page Copy
+      <div className="course-preview">
+        <h3>📚 Course Structure</h3>
+        <div className="chapters-list">
+          {courseContent?.chapters?.map((chapter, index) => (
+            <div key={index} className="chapter-item">
+              <h4>Chapter {index + 1}: {chapter.title}</h4>
+              <div className="lessons-list">
+                {chapter.lessons?.map((lesson, lessonIndex) => (
+                  <div key={lessonIndex} className="lesson-item">
+                    <span>📖 {lesson.title}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
       
-      <div style={{ textAlign: 'right', marginTop: '30px' }}>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleStep3Next}
-          disabled={loading}
-        >
-          {loading ? 'Creating Course on Whop...' : 'Publish to Whop →'}
-        </button>
-      </div>
+      <button 
+        onClick={handleStep3Next} 
+        disabled={loading}
+        className="next-button"
+      >
+        {loading ? 'Creating Course...' : 'Publish to Whop'}
+      </button>
     </div>
   );
 
   const renderStep4 = () => (
-    <div className="fade-in">
+    <div className="step-container">
       <h2>Course Published Successfully!</h2>
-      <p>Your course has been created and is now live on Whop.</p>
+      <p>Your course has been created and published to Whop:</p>
       
-      <div className="alert alert-success">
-        🎉 Your course is LIVE and ready to sell on Whop!
-        <br />
-        <br />
-        <strong>Course:</strong> {createdCourse.course.title}
-        <br />
-        <strong>Product:</strong> {createdCourse.product.name}
-        <br />
-        <strong>Price:</strong> ${createdCourse.product.price}
-        <br />
-        <strong>Status:</strong> Active
-      </div>
-      
-      <div style={{ textAlign: 'right', marginTop: '30px' }}>
-        <button 
-          className="btn btn-primary" 
-          onClick={handleStep4Next}
-        >
-          View Launch Assets →
-        </button>
-      </div>
-    </div>
-  );
-
-  const renderStep5 = () => (
-    <div className="fade-in">
-      <h2>Launch Checklist & Marketing Assets</h2>
-      <p>Your course is ready! Download your marketing materials and start promoting.</p>
-      
-      <Alert type="success" message="🎉 Your course is LIVE and ready to sell on Whop!" />
-      
-      <div style={{ marginBottom: '30px' }}>
-        <h3>📥 Download Marketing Assets</h3>
-        <DownloadButton
-          label="Download Full Sales Script (VSL)"
-          data={launchData.salesPageCopy}
-          filename="sales_script_vsl.txt"
-        />
-        <DownloadButton
-          label="Download 5-Part Email Nurture Sequence"
-          data={launchData.emailNurture}
-          filename="email_nurture_sequence.txt"
-        />
-      </div>
-      
-      <div style={{ marginBottom: '30px' }}>
-        <h3>🔗 Quick Links</h3>
-        <div style={{ display: 'flex', gap: '15px', flexWrap: 'wrap' }}>
-          <a 
-            href={launchData.courseUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="btn btn-success"
-          >
-            📚 View Live Whop Course
+      <div className="success-info">
+        <div className="success-item">
+          <h3>✅ Course Created</h3>
+          <p>Title: {createdCourse?.course?.title}</p>
+          <a href={createdCourse?.course?.url} target="_blank" rel="noopener noreferrer" className="link-button">
+            View Course
           </a>
-          <a 
-            href={launchData.productUrl} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="btn btn-secondary"
-          >
-            🛒 View Product Page
+        </div>
+        
+        <div className="success-item">
+          <h3>✅ Product Created</h3>
+          <p>Name: {createdCourse?.product?.name}</p>
+          <p>Price: ${createdCourse?.product?.price}</p>
+          <a href={createdCourse?.product?.url} target="_blank" rel="noopener noreferrer" className="link-button">
+            View Product
           </a>
         </div>
       </div>
       
-      <div className="alert alert-info">
-        <h4>🚀 Next Steps:</h4>
-        <ul style={{ margin: '10px 0', paddingLeft: '20px' }}>
-          <li>Share your course on social media</li>
-          <li>Send the email nurture sequence to your list</li>
-          <li>Use the VSL script for sales pages</li>
-          <li>Monitor your Whop dashboard for sales</li>
-          <li>Engage with students in the course community</li>
-        </ul>
+      <button 
+        onClick={handleStep4Next} 
+        className="next-button"
+      >
+        Get Launch Assets
+      </button>
+    </div>
+  );
+
+  const renderStep5 = () => (
+    <div className="step-container">
+      <h2>Launch Assets Ready!</h2>
+      <p>Download your marketing assets and launch your course:</p>
+      
+      <div className="launch-assets">
+        <div className="asset-item">
+          <h3>📹 Video Sales Letter Script</h3>
+          <p>Complete VSL script for your course launch</p>
+          <button 
+            onClick={() => {
+              const blob = new Blob([launchData?.vslScript || ''], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'vsl-script.txt';
+              a.click();
+            }}
+            className="download-button"
+          >
+            Download VSL Script
+          </button>
+        </div>
+        
+        <div className="asset-item">
+          <h3>📧 Email Nurture Sequence</h3>
+          <p>7-day email sequence for course promotion</p>
+          <button 
+            onClick={() => {
+              const emails = launchData?.emailSequence?.join('\n\n---\n\n') || '';
+              const blob = new Blob([emails], { type: 'text/plain' });
+              const url = URL.createObjectURL(blob);
+              const a = document.createElement('a');
+              a.href = url;
+              a.download = 'email-sequence.txt';
+              a.click();
+            }}
+            className="download-button"
+          >
+            Download Email Sequence
+          </button>
+        </div>
       </div>
       
-      <div style={{ textAlign: 'center', marginTop: '40px' }}>
-        <button 
-          className="btn btn-primary" 
-          onClick={() => {
-            // Reset the app for a new course
-            setCurrentStep(1);
-            setKeywords('');
-            setCourseConcepts([]);
-            setSelectedConceptIndex(null);
-            setCourseContent(null);
-            setCreatedCourse(null);
-            setLaunchData(null);
-            setError(null);
-          }}
-        >
+      <div className="final-actions">
+        <button onClick={resetApp} className="reset-button">
           Create Another Course
         </button>
       </div>
@@ -333,21 +321,44 @@ const App = () => {
   };
 
   return (
-    <div className="app-container">
-      <div className="app-header">
-        <h1 className="app-title">UVZ Course Launchpad AI</h1>
-        <p className="app-subtitle">Transform your expertise into profitable digital courses</p>
+    <div className="app">
+      <header className="app-header">
+        <h1>🚀 UVZ Course Launchpad AI</h1>
+        <p>Automate digital product creation from your Unique Value Zone</p>
+      </header>
+
+      <div className="step-indicator">
+        {Array.from({ length: totalSteps }, (_, i) => (
+          <div
+            key={i + 1}
+            className={`step ${i + 1 <= currentStep ? 'active' : ''}`}
+          >
+            <span className="step-number">{i + 1}</span>
+            <span className="step-label">
+              {i === 0 && 'Keywords'}
+              {i === 1 && 'Concepts'}
+              {i === 2 && 'Content'}
+              {i === 3 && 'Publish'}
+              {i === 4 && 'Launch'}
+            </span>
+          </div>
+        ))}
       </div>
-      
-      <StepIndicator currentStep={currentStep} totalSteps={totalSteps} />
-      
-      <div className="main-content">
+
+      <main className="app-main">
         {error && (
-          <Alert type="error" message={error} />
+          <div className="error-message">
+            <span>❌ {error}</span>
+            <button onClick={() => setError(null)} className="close-error">×</button>
+          </div>
         )}
-        
+
         {renderCurrentStep()}
-      </div>
+      </main>
+
+      <footer className="app-footer">
+        <p>Powered by Gemini AI & Whop Integration</p>
+      </footer>
     </div>
   );
 };
