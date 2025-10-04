@@ -7,24 +7,22 @@ class GeminiService {
       throw new Error('Gemini API key is required. Please set VITE_GEMINI_API_KEY in your environment variables.');
     }
     this.genAI = new GoogleGenerativeAI(this.apiKey);
-    this.model = this.genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    this.model = this.genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
   }
 
-  async generateCourseConcepts(uvzData) {
+  async generateCourseConcepts(keywords) {
     const prompt = `
 You are an Expert Digital Product Strategist with 10+ years of experience in creating high-converting digital courses.
 
-Analyze the user's input to define their Unique Value Zone (UVZ):
-- Skills & Expertise: ${uvzData.skills}
-- Passions & Interests: ${uvzData.passions}
-- Proven Results/Solutions: ${uvzData.results}
+Based on these keywords: "${keywords}"
 
-Based on this UVZ, generate exactly 3 distinct, high-demand digital course ideas that:
-1. Leverage their unique expertise and passion
-2. Address a real market need
-3. Have a clear, compelling promise
-4. Target a specific, identifiable audience
+Generate exactly 10 distinct, high-demand digital course ideas that:
+1. Are directly related to the keywords provided
+2. Address real market needs and pain points
+3. Have clear, compelling promises
+4. Target specific, identifiable audiences
 5. Are priced at $97 or higher
+6. Can be taught through text-based lessons
 
 For each course concept, provide:
 - A compelling course name (max 60 characters)
@@ -51,10 +49,52 @@ Output MUST be a valid JSON array with this exact structure:
     "core_promise": "Third promise",
     "target_audience": "Third audience",
     "price_usd": 397
+  },
+  {
+    "course_name": "Fourth Course Name",
+    "core_promise": "Fourth promise",
+    "target_audience": "Fourth audience",
+    "price_usd": 497
+  },
+  {
+    "course_name": "Fifth Course Name",
+    "core_promise": "Fifth promise",
+    "target_audience": "Fifth audience",
+    "price_usd": 597
+  },
+  {
+    "course_name": "Sixth Course Name",
+    "core_promise": "Sixth promise",
+    "target_audience": "Sixth audience",
+    "price_usd": 697
+  },
+  {
+    "course_name": "Seventh Course Name",
+    "core_promise": "Seventh promise",
+    "target_audience": "Seventh audience",
+    "price_usd": 797
+  },
+  {
+    "course_name": "Eighth Course Name",
+    "core_promise": "Eighth promise",
+    "target_audience": "Eighth audience",
+    "price_usd": 897
+  },
+  {
+    "course_name": "Ninth Course Name",
+    "core_promise": "Ninth promise",
+    "target_audience": "Ninth audience",
+    "price_usd": 997
+  },
+  {
+    "course_name": "Tenth Course Name",
+    "core_promise": "Tenth promise",
+    "target_audience": "Tenth audience",
+    "price_usd": 197
   }
 ]
 
-Focus on courses that can be taught through text-based lessons and have proven market demand.
+Focus on courses that have proven market demand and can generate significant revenue.
 `;
 
     try {
@@ -71,8 +111,8 @@ Focus on courses that can be taught through text-based lessons and have proven m
       const courseConcepts = JSON.parse(jsonMatch[0]);
       
       // Validate the response structure
-      if (!Array.isArray(courseConcepts) || courseConcepts.length !== 3) {
-        throw new Error('AI response does not contain exactly 3 course concepts');
+      if (!Array.isArray(courseConcepts) || courseConcepts.length !== 10) {
+        throw new Error('AI response does not contain exactly 10 course concepts');
       }
       
       return courseConcepts;

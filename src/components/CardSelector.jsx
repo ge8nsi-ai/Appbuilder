@@ -33,12 +33,20 @@ const CardSelector = ({
   return (
     <div className="form-group">
       <label className="form-label">{label}</label>
-      <div className="card-selector">
+      <div className="card-selector" style={{ 
+        display: 'grid', 
+        gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', 
+        gap: '20px',
+        maxHeight: '500px',
+        overflowY: 'auto',
+        padding: '10px'
+      }}>
         {options.map((option, index) => (
           <div
             key={index}
             className={`card ${selectedValue === index ? 'selected' : ''}`}
             onClick={() => onSelect(index)}
+            style={{ cursor: 'pointer', minHeight: '200px' }}
           >
             <h3 className="card-title">{option.course_name}</h3>
             <p className="card-description">{option.core_promise}</p>

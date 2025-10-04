@@ -1,0 +1,25 @@
+{
+  "version": 2,
+  "name": "uvz-course-launchpad-ai",
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/static-build",
+      "config": {
+        "distDir": "dist"
+      }
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/index.html"
+    }
+  ],
+  "env": {
+    "VITE_GEMINI_API_KEY": "AIzaSyBxKkT49hnFi6yXf7JVboFY-aLeHrHCOCI",
+    "VITE_WHOP_API_KEY": "fUaz0J7H-ixhluIyo7FpGhhDSBa_50_5Cw6xlA48E38",
+    "VITE_WHOP_APP_ID": "app_1CSGwlh2Of6r50",
+    "VITE_WHOP_COMPANY_ID": "biz_qBykJdUrk3W1wv"
+  }
+}

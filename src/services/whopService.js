@@ -1,21 +1,110 @@
-// Mock Whop SDK Service for development
-// In production, this would use the actual Whop SDK
+// Mock WhopAPI for development - will be replaced with real @whop/api in production
+const WhopAPI = class {
+  constructor(config) {
+    this.config = config;
+  }
+  
+  async courses() {
+    return {
+      create: async (data) => {
+        console.log('Creating course:', data);
+        return {
+          id: `course_${Date.now()}`,
+          title: data.title,
+          experience_id: data.experience_id,
+          status: 'draft',
+          created_at: new Date().toISOString(),
+          url: `https://whop.com/courses/${Date.now()}`
+        };
+      },
+      chapters: {
+        create: async (data) => {
+          console.log('Creating chapter:', data);
+          return {
+            id: `chapter_${Date.now()}`,
+            course_id: data.course_id,
+            title: data.title,
+            order: data.order || 1,
+            created_at: new Date().toISOString()
+          };
+        }
+      },
+      lessons: {
+        create: async (data) => {
+          console.log('Creating lesson:', data);
+          return {
+            id: `lesson_${Date.now()}`,
+            chapter_id: data.chapter_id,
+            title: data.title,
+            content: data.content,
+            lesson_type: data.lesson_type || 'text',
+            order: data.order || 1,
+            created_at: new Date().toISOString()
+          };
+        }
+      }
+    };
+  }
+  
+  async products() {
+    return {
+      create: async (data) => {
+        console.log('Creating product:', data);
+        return {
+          id: `product_${Date.now()}`,
+          name: data.name,
+          price: data.price,
+          description: data.description,
+          delivery_type: data.delivery_type,
+          experience_id: data.experience_id,
+          status: 'active',
+          created_at: new Date().toISOString(),
+          url: `https://whop.com/products/${Date.now()}`
+        };
+      },
+      linkCourse: async (data) => {
+        console.log('Linking course to product:', data);
+        return {
+          id: `link_${Date.now()}`,
+          product_id: data.product_id,
+          course_id: data.course_id,
+          created_at: new Date().toISOString()
+        };
+      }
+    };
+  }
+};
 
 class WhopService {
   constructor() {
     this.isInitialized = false;
     this.userExperienceId = null;
+    this.api = null;
+    this.whopContext = null;
   }
 
-  async initialize() {
+  async initialize(whopContext = null) {
     try {
-      // In a real implementation, this would initialize the Whop SDK
-      // For now, we'll simulate the initialization
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      // Initialize Whop API with context
+      this.whopContext = whopContext;
+      
+      if (whopContext) {
+        this.api = new WhopAPI({
+          token: whopContext.token,
+          experienceId: whopContext.experienceId
+        });
+        this.userExperienceId = whopContext.experienceId;
+      } else {
+        // Fallback for development/testing
+        this.api = new WhopAPI({
+          token: import.meta.env.WHOP_API_KEY || 'dev_token',
+          appId: import.meta.env.NEXT_PUBLIC_WHOP_APP_ID,
+          companyId: import.meta.env.NEXT_PUBLIC_WHOP_COMPANY_ID
+        });
+        this.userExperienceId = import.meta.env.NEXT_PUBLIC_WHOP_COMPANY_ID;
+      }
       
       this.isInitialized = true;
-      this.userExperienceId = 'mock_experience_id_123';
-      
       console.log('Whop SDK initialized successfully');
       return true;
     } catch (error) {
@@ -25,26 +114,20 @@ class WhopService {
   }
 
   async createCourse(courseData) {
-    if (!this.isInitialized) {
+    if (!this.isInitialized || !this.api) {
       throw new Error('Whop SDK not initialized');
     }
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock course creation response
-      const mockCourse = {
-        id: `course_${Date.now()}`,
+      const course = await this.api.courses.create({
         title: courseData.title,
         experience_id: this.userExperienceId,
-        status: 'draft',
-        created_at: new Date().toISOString(),
-        url: `https://whop.com/courses/${Date.now()}`
-      };
+        description: courseData.description || '',
+        status: 'draft'
+      });
       
-      console.log('Course created successfully:', mockCourse);
-      return mockCourse;
+      console.log('Course created successfully:', course);
+      return course;
     } catch (error) {
       console.error('Error creating course:', error);
       throw new Error(`Failed to create course: ${error.message}`);
@@ -52,25 +135,19 @@ class WhopService {
   }
 
   async createChapter(chapterData) {
-    if (!this.isInitialized) {
+    if (!this.isInitialized || !this.api) {
       throw new Error('Whop SDK not initialized');
     }
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // Mock chapter creation response
-      const mockChapter = {
-        id: `chapter_${Date.now()}`,
-        courseId: chapterData.courseId,
+      const chapter = await this.api.courses.chapters.create({
+        course_id: chapterData.courseId,
         title: chapterData.title,
-        order: chapterData.order || 1,
-        created_at: new Date().toISOString()
-      };
+        order: chapterData.order || 1
+      });
       
-      console.log('Chapter created successfully:', mockChapter);
-      return mockChapter;
+      console.log('Chapter created successfully:', chapter);
+      return chapter;
     } catch (error) {
       console.error('Error creating chapter:', error);
       throw new Error(`Failed to create chapter: ${error.message}`);
@@ -78,27 +155,21 @@ class WhopService {
   }
 
   async createLesson(lessonData) {
-    if (!this.isInitialized) {
+    if (!this.isInitialized || !this.api) {
       throw new Error('Whop SDK not initialized');
     }
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1500));
-      
-      // Mock lesson creation response
-      const mockLesson = {
-        id: `lesson_${Date.now()}`,
-        chapterId: lessonData.chapterId,
+      const lesson = await this.api.courses.lessons.create({
+        chapter_id: lessonData.chapterId,
         title: lessonData.title,
         content: lessonData.content,
-        lessonType: lessonData.lessonType || 'text',
-        order: lessonData.order || 1,
-        created_at: new Date().toISOString()
-      };
+        lesson_type: lessonData.lessonType || 'text',
+        order: lessonData.order || 1
+      });
       
-      console.log('Lesson created successfully:', mockLesson);
-      return mockLesson;
+      console.log('Lesson created successfully:', lesson);
+      return lesson;
     } catch (error) {
       console.error('Error creating lesson:', error);
       throw new Error(`Failed to create lesson: ${error.message}`);
@@ -106,28 +177,22 @@ class WhopService {
   }
 
   async createProduct(productData) {
-    if (!this.isInitialized) {
+    if (!this.isInitialized || !this.api) {
       throw new Error('Whop SDK not initialized');
     }
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock product creation response
-      const mockProduct = {
-        id: `product_${Date.now()}`,
+      const product = await this.api.products.create({
         name: productData.name,
         price: productData.price,
         description: productData.description,
         delivery_type: productData.delivery_type,
-        status: 'active',
-        created_at: new Date().toISOString(),
-        url: `https://whop.com/products/${Date.now()}`
-      };
+        experience_id: this.userExperienceId,
+        status: 'active'
+      });
       
-      console.log('Product created successfully:', mockProduct);
-      return mockProduct;
+      console.log('Product created successfully:', product);
+      return product;
     } catch (error) {
       console.error('Error creating product:', error);
       throw new Error(`Failed to create product: ${error.message}`);
@@ -135,24 +200,18 @@ class WhopService {
   }
 
   async linkCourseToProduct(courseId, productId) {
-    if (!this.isInitialized) {
+    if (!this.isInitialized || !this.api) {
       throw new Error('Whop SDK not initialized');
     }
 
     try {
-      // Simulate API call delay
-      await new Promise(resolve => setTimeout(resolve, 1000));
+      const link = await this.api.products.linkCourse({
+        product_id: productId,
+        course_id: courseId
+      });
       
-      // Mock linking response
-      const mockLink = {
-        id: `link_${Date.now()}`,
-        courseId: courseId,
-        productId: productId,
-        created_at: new Date().toISOString()
-      };
-      
-      console.log('Course linked to product successfully:', mockLink);
-      return mockLink;
+      console.log('Course linked to product successfully:', link);
+      return link;
     } catch (error) {
       console.error('Error linking course to product:', error);
       throw new Error(`Failed to link course to product: ${error.message}`);

@@ -7,17 +7,21 @@ import DownloadButton from './components/DownloadButton';
 import geminiService from './services/geminiService';
 import whopService from './services/whopService';
 
+// Mock Whop hooks for development - will be replaced with real @whop/react in production
+const useWhop = () => ({
+  token: import.meta.env.VITE_WHOP_API_KEY || 'fUaz0J7H-ixhluIyo7FpGhhDSBa_50_5Cw6xlA48E38',
+  experienceId: import.meta.env.VITE_WHOP_COMPANY_ID || 'biz_qBykJdUrk3W1wv',
+  appId: import.meta.env.VITE_WHOP_APP_ID || 'app_1CSGwlh2Of6r50'
+});
+
 const App = () => {
+  const whop = useWhop();
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
   
-  // Step 1: UVZ Input Data
-  const [uvzData, setUvzData] = useState({
-    skills: '',
-    passions: '',
-    results: ''
-  });
+  // Step 1: Keywords Input
+  const [keywords, setKeywords] = useState('');
   
   // Step 2: AI Generated Concepts
   const [courseConcepts, setCourseConcepts] = useState([]);
@@ -38,20 +42,22 @@ const App = () => {
     // Initialize Whop SDK when app loads
     const initializeWhop = async () => {
       try {
-        await whopService.initialize();
+        await whopService.initialize(whop);
       } catch (error) {
         console.error('Failed to initialize Whop SDK:', error);
         setError('Failed to initialize Whop SDK. Please refresh the page.');
       }
     };
     
-    initializeWhop();
-  }, []);
+    if (whop) {
+      initializeWhop();
+    }
+  }, [whop]);
 
   const handleStep1Next = async () => {
-    // Validate inputs
-    if (!uvzData.skills.trim() || !uvzData.passions.trim() || !uvzData.results.trim()) {
-      setError('Please fill in all fields before proceeding.');
+    // Validate input
+    if (!keywords.trim()) {
+      setError('Please enter at least 1-2 keywords before proceeding.');
       return;
     }
     
@@ -59,7 +65,7 @@ const App = () => {
     setError(null);
     
     try {
-      const concepts = await geminiService.generateCourseConcepts(uvzData);
+      const concepts = await geminiService.generateCourseConcepts(keywords.trim());
       setCourseConcepts(concepts);
       setCurrentStep(2);
     } catch (error) {
@@ -121,32 +127,26 @@ const App = () => {
 
   const renderStep1 = () => (
     <div className="fade-in">
-      <h2>Define Your Unique Value Zone (UVZ)</h2>
-      <p>Tell us about your expertise, passions, and proven results to create the perfect course concept.</p>
+      <h2>Enter Your Keywords</h2>
+      <p>Simply enter 1-2 keywords related to your expertise or interests. Our AI will generate 10 profitable course concepts for you!</p>
       
-      <InputTextarea
-        label="Skills & Expertise"
-        placeholder="Example: Python Programming, E-commerce Marketing, High-Ticket Sales, Digital Marketing, Fitness Training"
-        value={uvzData.skills}
-        onChange={(value) => setUvzData(prev => ({ ...prev, skills: value }))}
-        required
-      />
-      
-      <InputTextarea
-        label="Passions & Interests"
-        placeholder="Example: Fitness & Health, Cryptocurrency Trading, Personal Finance, Sustainable Living, Technology"
-        value={uvzData.passions}
-        onChange={(value) => setUvzData(prev => ({ ...prev, passions: value }))}
-        required
-      />
-      
-      <InputTextarea
-        label="Proven Results/Solutions"
-        placeholder="Example: Helped 10 clients reach $10k/month revenue, Lost 50 lbs in 90 days, Generated $100k in sales, Built 5 successful online businesses"
-        value={uvzData.results}
-        onChange={(value) => setUvzData(prev => ({ ...prev, results: value }))}
-        required
-      />
+      <div className="form-group">
+        <label className="form-label">
+          Keywords <span style={{ color: '#dc3545', marginLeft: '4px' }}>*</span>
+        </label>
+        <input
+          className="form-textarea"
+          type="text"
+          placeholder="Example: fitness, cryptocurrency, e-commerce, python, marketing, sales, health, finance, technology, business"
+          value={keywords}
+          onChange={(e) => setKeywords(e.target.value)}
+          required
+          style={{ minHeight: '60px', padding: '15px' }}
+        />
+        <small style={{ color: '#6c757d', fontSize: '0.9rem', marginTop: '5px', display: 'block' }}>
+          💡 Tip: Use 1-2 keywords like "fitness", "cryptocurrency", "e-commerce", "python", "marketing", etc.
+        </small>
+      </div>
       
       <div style={{ textAlign: 'right', marginTop: '30px' }}>
         <button 
@@ -154,7 +154,7 @@ const App = () => {
           onClick={handleStep1Next}
           disabled={loading}
         >
-          {loading ? 'Analyzing Your UVZ...' : 'Generate Course Concepts →'}
+          {loading ? 'Generating 10 Course Concepts...' : 'Generate 10 Course Concepts →'}
         </button>
       </div>
     </div>
@@ -163,10 +163,10 @@ const App = () => {
   const renderStep2 = () => (
     <div className="fade-in">
       <h2>Choose Your Course Concept</h2>
-      <p>Based on your UVZ, we've generated three high-demand course concepts. Select the one that resonates most with you.</p>
+      <p>Based on your keywords "{keywords}", we've generated 10 high-demand course concepts. Select the one that resonates most with you.</p>
       
       <CardSelector
-        label="Select Your UVZ Course Concept"
+        label="Select Your Course Concept"
         options={courseConcepts}
         selectedValue={selectedConceptIndex}
         onSelect={setSelectedConceptIndex}
@@ -303,7 +303,7 @@ const App = () => {
           onClick={() => {
             // Reset the app for a new course
             setCurrentStep(1);
-            setUvzData({ skills: '', passions: '', results: '' });
+            setKeywords('');
             setCourseConcepts([]);
             setSelectedConceptIndex(null);
             setCourseContent(null);

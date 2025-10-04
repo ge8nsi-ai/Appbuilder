@@ -8,11 +8,16 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0"
+    "lint": "eslint src --ext js,jsx --report-unused-disable-directives --max-warnings 0",
+    "vercel-build": "vite build",
+    "start": "vite preview --port 3000"
   },
   "dependencies": {
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
+    "@whop/react": "^0.2.46",
+    "@whop/api": "^0.0.51",
+    "@whop/frosted-ui": "^0.0.1-canary.24",
     "@google/generative-ai": "^0.2.1",
     "lucide-react": "^0.263.1",
     "react-markdown": "^9.0.1",
