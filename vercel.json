@@ -1,14 +1,12 @@
 {
   "version": 2,
-  "name": "uvz-course-launchpad-ai",
+  "name": "uvz-course-launchpad-pro",
   "builds": [
     {
       "src": "package.json",
       "use": "@vercel/static-build",
       "config": {
-        "distDir": "dist",
-        "installCommand": "npm install --legacy-peer-deps",
-        "buildCommand": "NODE_ENV=development npm run build"
+        "distDir": "dist"
       }
     }
   ],

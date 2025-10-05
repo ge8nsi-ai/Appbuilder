@@ -1,366 +1,387 @@
-import React, { useState, useEffect } from 'react';
-import geminiService from './services/geminiService';
-import whopService from './services/whopService';
+import React, { useState, useEffect } from 'react'
+import { Rocket, Sparkles, CheckCircle, AlertCircle } from 'lucide-react'
+import { useAsync } from './hooks/useAsync.js'
+import { StepIndicator, ConceptCard, CoursePreview, LaunchAssets } from './components/index.js'
+import { Button, Card, CardContent, CardHeader, CardTitle, Alert, LoadingSpinner, Input } from './components/ui/index.js'
+import geminiService from './services/geminiService.js'
+import whopService from './services/whopService.js'
+import { formatPrice } from './utils/index.js'
 
-const App = () => {
-  const [currentStep, setCurrentStep] = useState(1);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  
-  // Step 1: Keywords Input
-  const [keywords, setKeywords] = useState('');
-  
-  // Step 2: AI Generated Concepts
-  const [courseConcepts, setCourseConcepts] = useState([]);
-  const [selectedConceptIndex, setSelectedConceptIndex] = useState(null);
-  
-  // Step 3: Generated Course Content
-  const [courseContent, setCourseContent] = useState(null);
-  
-  // Step 4: Created Course Data
-  const [createdCourse, setCreatedCourse] = useState(null);
-  
-  // Step 5: Launch Data
-  const [launchData, setLaunchData] = useState(null);
+const STEPS = [
+  'Keywords',
+  'Concepts', 
+  'Content',
+  'Publish',
+  'Launch'
+]
 
-  const totalSteps = 5;
+function App() {
+  // State management
+  const [currentStep, setCurrentStep] = useState(1)
+  const [keywords, setKeywords] = useState('')
+  const [selectedConceptIndex, setSelectedConceptIndex] = useState(null)
+  const [courseConcepts, setCourseConcepts] = useState([])
+  const [courseContent, setCourseContent] = useState(null)
+  const [createdCourse, setCreatedCourse] = useState(null)
+  const [launchData, setLaunchData] = useState(null)
+  const [error, setError] = useState(null)
 
+  // Async operations
+  const { execute: generateConcepts, loading: conceptsLoading } = useAsync(geminiService.generateCourseConcepts)
+  const { execute: generateContent, loading: contentLoading } = useAsync(geminiService.generateCourseContent)
+  const { execute: createCourse, loading: courseLoading } = useAsync(whopService.createCourse)
+  const { execute: createProduct, loading: productLoading } = useAsync(whopService.createProduct)
+  const { execute: linkCourse, loading: linkLoading } = useAsync(whopService.linkCourseToProduct)
+
+  // Initialize Whop service
   useEffect(() => {
-    // Initialize Whop service
-    const initializeWhop = async () => {
+    const initWhop = async () => {
       try {
-        await whopService.initialize();
-        console.log('Whop service initialized successfully');
+        await whopService.initialize()
       } catch (error) {
-        console.error('Failed to initialize Whop service:', error);
-        setError('Failed to initialize Whop service. Please refresh the page.');
+        console.error('Failed to initialize Whop service:', error)
+        setError('Failed to initialize Whop service. Please refresh the page.')
       }
-    };
+    }
+    initWhop()
+  }, [])
 
-    initializeWhop();
-  }, []);
-
-  const handleStep1Next = async () => {
+  // Step 1: Generate concepts
+  const handleGenerateConcepts = async () => {
     if (!keywords.trim()) {
-      setError('Please enter at least 1-2 keywords');
-      return;
+      setError('Please enter at least 1-2 keywords')
+      return
     }
-
-    setLoading(true);
-    setError(null);
 
     try {
-      const concepts = await geminiService.generateCourseConcepts(keywords);
-      setCourseConcepts(concepts);
-      setCurrentStep(2);
+      setError(null)
+      const concepts = await generateConcepts(keywords)
+      setCourseConcepts(concepts)
+      setCurrentStep(2)
     } catch (error) {
-      console.error('Error generating concepts:', error);
-      setError('Failed to generate course concepts. Please try again.');
-    } finally {
-      setLoading(false);
+      setError('Failed to generate course concepts. Please try again.')
     }
-  };
+  }
 
-  const handleStep2Next = async () => {
+  // Step 2: Generate content
+  const handleGenerateContent = async () => {
     if (selectedConceptIndex === null) {
-      setError('Please select a course concept');
-      return;
+      setError('Please select a course concept')
+      return
     }
-
-    setLoading(true);
-    setError(null);
 
     try {
-      const selectedConcept = courseConcepts[selectedConceptIndex];
-      const content = await geminiService.generateCourseContent(selectedConcept);
-      setCourseContent(content);
-      setCurrentStep(3);
+      setError(null)
+      const selectedConcept = courseConcepts[selectedConceptIndex]
+      const content = await generateContent(selectedConcept)
+      setCourseContent(content)
+      setCurrentStep(3)
     } catch (error) {
-      console.error('Error generating content:', error);
-      setError('Failed to generate course content. Please try again.');
-    } finally {
-      setLoading(false);
+      setError('Failed to generate course content. Please try again.')
     }
-  };
+  }
 
-  const handleStep3Next = async () => {
+  // Step 3: Create course and product
+  const handleCreateCourse = async () => {
     if (!courseContent) {
-      setError('No course content available');
-      return;
+      setError('No course content available')
+      return
     }
-
-    setLoading(true);
-    setError(null);
 
     try {
-      const selectedConcept = courseConcepts[selectedConceptIndex];
-      const course = await whopService.createCompleteCourse(courseContent, selectedConcept);
-      setCreatedCourse(course);
-      setCurrentStep(4);
+      setError(null)
+      
+      // Create course
+      const course = await createCourse({
+        title: courseContent.title,
+        description: courseContent.description
+      })
+
+      // Create product
+      const selectedConcept = courseConcepts[selectedConceptIndex]
+      const product = await createProduct({
+        name: `${courseContent.title} - Premium Access`,
+        description: courseContent.description,
+        price: selectedConcept.pricePoint
+      })
+
+      // Link course to product
+      await linkCourse(course.id, product.id)
+
+      setCreatedCourse({ course, product })
+      setCurrentStep(4)
     } catch (error) {
-      console.error('Error creating course:', error);
-      setError('Failed to create course. Please try again.');
-    } finally {
-      setLoading(false);
+      setError('Failed to create course. Please try again.')
     }
-  };
+  }
 
-  const handleStep4Next = () => {
+  // Step 4: Generate launch data
+  const handleGenerateLaunchData = () => {
     if (!createdCourse) {
-      setError('No course created');
-      return;
+      setError('No course created')
+      return
     }
 
-    // Generate launch data
     const launch = {
       courseUrl: createdCourse.course?.url || '#',
       productUrl: createdCourse.product?.url || '#',
       vslScript: courseContent?.vslScript || '',
       emailSequence: courseContent?.emailSequence || []
-    };
+    }
     
-    setLaunchData(launch);
-    setCurrentStep(5);
-  };
+    setLaunchData(launch)
+    setCurrentStep(5)
+  }
 
+  // Reset app
   const resetApp = () => {
-    setCurrentStep(1);
-    setKeywords('');
-    setCourseConcepts([]);
-    setSelectedConceptIndex(null);
-    setCourseContent(null);
-    setCreatedCourse(null);
-    setLaunchData(null);
-    setError(null);
-  };
+    setCurrentStep(1)
+    setKeywords('')
+    setCourseConcepts([])
+    setSelectedConceptIndex(null)
+    setCourseContent(null)
+    setCreatedCourse(null)
+    setLaunchData(null)
+    setError(null)
+  }
 
-  const renderStep1 = () => (
-    <div className="step-container">
-      <h2>Enter Your Keywords</h2>
-      <p>Enter 1-2 keywords to generate 10 course concepts related to your unique value zone.</p>
-      
-      <div className="input-group">
-        <input
-          type="text"
-          value={keywords}
-          onChange={(e) => setKeywords(e.target.value)}
-          placeholder="e.g., fitness, productivity, marketing"
-          className="keyword-input"
-        />
-      </div>
-      
-      <button 
-        onClick={handleStep1Next} 
-        disabled={loading || !keywords.trim()}
-        className="next-button"
-      >
-        {loading ? 'Generating...' : 'Generate Course Concepts'}
-      </button>
-    </div>
-  );
+  // Render step content
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 1:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Sparkles className="h-6 w-6 mr-2 text-whop-600" />
+                Enter Your Keywords
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-6">
+                Enter 1-2 keywords to generate 10 course concepts related to your unique value zone.
+              </p>
+              <div className="space-y-4">
+                <Input
+                  type="text"
+                  value={keywords}
+                  onChange={(e) => setKeywords(e.target.value)}
+                  placeholder="e.g., fitness, productivity, marketing"
+                  className="text-lg"
+                />
+                <Button
+                  onClick={handleGenerateConcepts}
+                  loading={conceptsLoading}
+                  disabled={!keywords.trim() || conceptsLoading}
+                  className="w-full"
+                >
+                  {conceptsLoading ? 'Generating Concepts...' : 'Generate Course Concepts'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )
 
-  const renderStep2 = () => (
-    <div className="step-container">
-      <h2>Choose Your Course Concept</h2>
-      <p>Select one of the 10 AI-generated course concepts:</p>
-      
-      <div className="concepts-grid">
-        {courseConcepts.map((concept, index) => (
-          <div
-            key={index}
-            className={`concept-card ${selectedConceptIndex === index ? 'selected' : ''}`}
-            onClick={() => setSelectedConceptIndex(index)}
-          >
-            <h3>{concept.title}</h3>
-            <p>{concept.description}</p>
-            <div className="concept-meta">
-              <span className="target-audience">👥 {concept.targetAudience}</span>
-              <span className="price-point">💰 {concept.pricePoint}</span>
-            </div>
-          </div>
-        ))}
-      </div>
-      
-      <button 
-        onClick={handleStep2Next} 
-        disabled={loading || selectedConceptIndex === null}
-        className="next-button"
-      >
-        {loading ? 'Generating Content...' : 'Create Course Content'}
-      </button>
-    </div>
-  );
-
-  const renderStep3 = () => (
-    <div className="step-container">
-      <h2>Course Content Generated</h2>
-      <p>Your complete course structure has been created:</p>
-      
-      <div className="course-preview">
-        <h3>📚 Course Structure</h3>
-        <div className="chapters-list">
-          {courseContent?.chapters?.map((chapter, index) => (
-            <div key={index} className="chapter-item">
-              <h4>Chapter {index + 1}: {chapter.title}</h4>
-              <div className="lessons-list">
-                {chapter.lessons?.map((lesson, lessonIndex) => (
-                  <div key={lessonIndex} className="lesson-item">
-                    <span>📖 {lesson.title}</span>
-                  </div>
+      case 2:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CheckCircle className="h-6 w-6 mr-2 text-whop-600" />
+                Choose Your Course Concept
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-6">
+                Select one of the 10 AI-generated course concepts:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {courseConcepts.map((concept, index) => (
+                  <ConceptCard
+                    key={concept.id}
+                    concept={concept}
+                    isSelected={selectedConceptIndex === index}
+                    onSelect={setSelectedConceptIndex}
+                    index={index}
+                  />
                 ))}
               </div>
-            </div>
-          ))}
-        </div>
-      </div>
-      
-      <button 
-        onClick={handleStep3Next} 
-        disabled={loading}
-        className="next-button"
-      >
-        {loading ? 'Creating Course...' : 'Publish to Whop'}
-      </button>
-    </div>
-  );
+              <div className="mt-6">
+                <Button
+                  onClick={handleGenerateContent}
+                  loading={contentLoading}
+                  disabled={selectedConceptIndex === null || contentLoading}
+                  className="w-full"
+                >
+                  {contentLoading ? 'Generating Content...' : 'Create Course Content'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )
 
-  const renderStep4 = () => (
-    <div className="step-container">
-      <h2>Course Published Successfully!</h2>
-      <p>Your course has been created and published to Whop:</p>
-      
-      <div className="success-info">
-        <div className="success-item">
-          <h3>✅ Course Created</h3>
-          <p>Title: {createdCourse?.course?.title}</p>
-          <a href={createdCourse?.course?.url} target="_blank" rel="noopener noreferrer" className="link-button">
-            View Course
-          </a>
-        </div>
-        
-        <div className="success-item">
-          <h3>✅ Product Created</h3>
-          <p>Name: {createdCourse?.product?.name}</p>
-          <p>Price: ${createdCourse?.product?.price}</p>
-          <a href={createdCourse?.product?.url} target="_blank" rel="noopener noreferrer" className="link-button">
-            View Product
-          </a>
-        </div>
-      </div>
-      
-      <button 
-        onClick={handleStep4Next} 
-        className="next-button"
-      >
-        Get Launch Assets
-      </button>
-    </div>
-  );
+      case 3:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <Rocket className="h-6 w-6 mr-2 text-whop-600" />
+                Course Content Generated
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-6">
+                Your complete course structure has been created:
+              </p>
+              <CoursePreview courseContent={courseContent} />
+              <div className="mt-6">
+                <Button
+                  onClick={handleCreateCourse}
+                  loading={courseLoading || productLoading || linkLoading}
+                  disabled={courseLoading || productLoading || linkLoading}
+                  className="w-full"
+                >
+                  {(courseLoading || productLoading || linkLoading) ? 'Creating Course...' : 'Publish to Whop'}
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )
 
-  const renderStep5 = () => (
-    <div className="step-container">
-      <h2>Launch Assets Ready!</h2>
-      <p>Download your marketing assets and launch your course:</p>
-      
-      <div className="launch-assets">
-        <div className="asset-item">
-          <h3>📹 Video Sales Letter Script</h3>
-          <p>Complete VSL script for your course launch</p>
-          <button 
-            onClick={() => {
-              const blob = new Blob([launchData?.vslScript || ''], { type: 'text/plain' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'vsl-script.txt';
-              a.click();
-            }}
-            className="download-button"
-          >
-            Download VSL Script
-          </button>
-        </div>
-        
-        <div className="asset-item">
-          <h3>📧 Email Nurture Sequence</h3>
-          <p>7-day email sequence for course promotion</p>
-          <button 
-            onClick={() => {
-              const emails = launchData?.emailSequence?.join('\n\n---\n\n') || '';
-              const blob = new Blob([emails], { type: 'text/plain' });
-              const url = URL.createObjectURL(blob);
-              const a = document.createElement('a');
-              a.href = url;
-              a.download = 'email-sequence.txt';
-              a.click();
-            }}
-            className="download-button"
-          >
-            Download Email Sequence
-          </button>
-        </div>
-      </div>
-      
-      <div className="final-actions">
-        <button onClick={resetApp} className="reset-button">
-          Create Another Course
-        </button>
-      </div>
-    </div>
-  );
+      case 4:
+        return (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center">
+                <CheckCircle className="h-6 w-6 mr-2 text-green-600" />
+                Course Published Successfully!
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <p className="text-gray-600 mb-6">
+                Your course has been created and published to Whop:
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h3 className="font-semibold text-green-800 mb-2">✅ Course Created</h3>
+                  <p className="text-sm text-green-700 mb-2">
+                    <strong>Title:</strong> {createdCourse?.course?.title}
+                  </p>
+                  <a
+                    href={createdCourse?.course?.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-green-600 hover:text-green-800 underline"
+                  >
+                    View Course →
+                  </a>
+                </div>
+                <div className="p-4 bg-green-50 rounded-lg border border-green-200">
+                  <h3 className="font-semibold text-green-800 mb-2">✅ Product Created</h3>
+                  <p className="text-sm text-green-700 mb-2">
+                    <strong>Name:</strong> {createdCourse?.product?.name}
+                  </p>
+                  <p className="text-sm text-green-700 mb-2">
+                    <strong>Price:</strong> {formatPrice(createdCourse?.product?.price)}
+                  </p>
+                  <a
+                    href={createdCourse?.product?.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-sm text-green-600 hover:text-green-800 underline"
+                  >
+                    View Product →
+                  </a>
+                </div>
+              </div>
+              <Button
+                onClick={handleGenerateLaunchData}
+                className="w-full"
+              >
+                Get Launch Assets
+              </Button>
+            </CardContent>
+          </Card>
+        )
 
-  const renderCurrentStep = () => {
-    switch (currentStep) {
-      case 1: return renderStep1();
-      case 2: return renderStep2();
-      case 3: return renderStep3();
-      case 4: return renderStep4();
-      case 5: return renderStep5();
-      default: return renderStep1();
+      case 5:
+        return (
+          <LaunchAssets launchData={launchData} />
+        )
+
+      default:
+        return null
     }
-  };
+  }
 
   return (
-    <div className="app">
-      <header className="app-header">
-        <h1>🚀 UVZ Course Launchpad AI</h1>
-        <p>Automate digital product creation from your Unique Value Zone</p>
+    <div className="min-h-screen bg-gradient-to-br from-whop-50 to-whop-100">
+      {/* Header */}
+      <header className="glass border-b border-whop-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="text-center">
+            <h1 className="text-4xl font-bold text-gradient mb-2">
+              🚀 UVZ Course Launchpad Pro
+            </h1>
+            <p className="text-lg text-gray-600">
+              Automate digital product creation from your Unique Value Zone
+            </p>
+          </div>
+        </div>
       </header>
 
-      <div className="step-indicator">
-        {Array.from({ length: totalSteps }, (_, i) => (
-          <div
-            key={i + 1}
-            className={`step ${i + 1 <= currentStep ? 'active' : ''}`}
-          >
-            <span className="step-number">{i + 1}</span>
-            <span className="step-label">
-              {i === 0 && 'Keywords'}
-              {i === 1 && 'Concepts'}
-              {i === 2 && 'Content'}
-              {i === 3 && 'Publish'}
-              {i === 4 && 'Launch'}
-            </span>
-          </div>
-        ))}
-      </div>
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Step Indicator */}
+        <div className="mb-8">
+          <StepIndicator
+            steps={STEPS}
+            currentStep={currentStep}
+            completedSteps={Array.from({ length: currentStep - 1 }, (_, i) => i + 1)}
+          />
+        </div>
 
-      <main className="app-main">
+        {/* Error Alert */}
         {error && (
-          <div className="error-message">
-            <span>❌ {error}</span>
-            <button onClick={() => setError(null)} className="close-error">×</button>
+          <div className="mb-6">
+            <Alert
+              variant="error"
+              title="Error"
+              onClose={() => setError(null)}
+            >
+              {error}
+            </Alert>
           </div>
         )}
 
-        {renderCurrentStep()}
+        {/* Step Content */}
+        <div className="animate-fade-in">
+          {renderStepContent()}
+        </div>
+
+        {/* Reset Button */}
+        {currentStep > 1 && (
+          <div className="mt-8 text-center">
+            <Button
+              variant="outline"
+              onClick={resetApp}
+            >
+              Create Another Course
+            </Button>
+          </div>
+        )}
       </main>
 
-      <footer className="app-footer">
-        <p>Powered by Gemini AI & Whop Integration</p>
+      {/* Footer */}
+      <footer className="glass border-t border-whop-200 mt-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="text-center text-gray-600">
+            <p>Powered by Gemini AI & Whop Integration</p>
+          </div>
+        </div>
       </footer>
     </div>
-  );
-};
+  )
+}
 
-export default App;
+export default App

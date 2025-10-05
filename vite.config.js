@@ -1,41 +1,32 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import path from 'path'
 
 export default defineConfig({
-  plugins: [react({
-    jsxRuntime: 'classic'
-  })],
+  plugins: [react()],
   server: {
     port: 3000,
     host: true
   },
   build: {
     outDir: 'dist',
-    sourcemap: true,
+    sourcemap: false,
     rollupOptions: {
-      external: [],
       output: {
-        manualChunks: undefined
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+          ai: ['@google/generative-ai']
+        }
       }
     }
   },
   define: {
-    global: 'globalThis',
-    'process.env.NODE_ENV': '"development"'
+    global: 'globalThis'
   },
-  envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'WHOP_'],
-  optimizeDeps: {
-    include: ['react', 'react-dom']
-  },
-  esbuild: {
-    jsx: 'transform',
-    jsxFactory: 'React.createElement',
-    jsxFragment: 'React.Fragment'
-  },
+  envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
   resolve: {
     alias: {
-      'react/jsx-runtime': 'react/cjs/react-jsx-runtime.development.js',
-      'react/jsx-dev-runtime': 'react/cjs/react-jsx-dev-runtime.development.js'
+      '@': path.resolve(__dirname, './src')
     }
   }
 })

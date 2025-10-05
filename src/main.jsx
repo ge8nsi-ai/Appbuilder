@@ -1,14 +1,10 @@
 import React from 'react'
-import ReactDOM from 'react-dom'
-import WhopAppWrapper from './components/WhopAppWrapper.jsx'
+import ReactDOM from 'react-dom/client'
+import App from './App.jsx'
 import './index.css'
 
-console.log('Main.jsx loading...');
-
-// Use React 18 style rendering for compatibility
-ReactDOM.render(
+ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>
-    <WhopAppWrapper />
+    <App />
   </React.StrictMode>,
-  document.getElementById('root')
 )

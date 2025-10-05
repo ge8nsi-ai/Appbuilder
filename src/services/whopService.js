@@ -1,67 +1,58 @@
-// Whop API integration with direct HTTP calls
-// Uses real Whop API when credentials are available
-// Falls back to mock responses for development
+import { createWhopCourse, createWhopProduct } from '../types/index.js'
 
 class WhopService {
   constructor() {
-    this.isInitialized = false;
-    this.userExperienceId = null;
-    this.api = null;
-    this.whopContext = null;
-    this.isMock = false;
+    this.apiKey = import.meta.env.VITE_WHOP_API_KEY
+    this.companyId = import.meta.env.VITE_WHOP_COMPANY_ID
+    this.appId = import.meta.env.VITE_WHOP_APP_ID
+    this.agentUserId = import.meta.env.VITE_WHOP_AGENT_USER_ID
+    this.baseUrl = 'https://api.whop.com/api/v2'
+    this.isInitialized = false
+    this.isMock = !this.apiKey
   }
 
-  async initialize(whopContext = null) {
+  async initialize() {
+    if (this.isMock) {
+      console.warn('Whop API key not found. Using mock service for development.')
+      this.isInitialized = true
+      return true
+    }
+
     try {
-      // Initialize Whop API with context
-      this.whopContext = whopContext;
-      
-      if (whopContext && whopContext.token) {
-        this.apiKey = whopContext.token;
-        this.userExperienceId = whopContext.experienceId;
-        this.isMock = false;
-        console.log('Whop API initialized with real credentials');
-      } else {
-        // Check for environment variables
-        const apiKey = import.meta.env.VITE_WHOP_API_KEY;
-        const companyId = import.meta.env.VITE_WHOP_COMPANY_ID;
-        
-        if (apiKey && companyId) {
-          this.apiKey = apiKey;
-          this.userExperienceId = companyId;
-          this.isMock = false;
-          console.log('Whop API initialized with environment variables');
-        } else {
-          console.warn('Whop API key not found. Using mock responses for development.');
-          this.isMock = true;
+      // Test API connection
+      const response = await fetch(`${this.baseUrl}/companies/${this.companyId}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
         }
+      })
+
+      if (!response.ok) {
+        throw new Error(`API connection failed: ${response.status}`)
       }
-      
-      this.isInitialized = true;
-      return true;
+
+      this.isInitialized = true
+      console.log('Whop service initialized successfully')
+      return true
     } catch (error) {
-      console.error('Failed to initialize Whop SDK:', error);
-      console.warn('Falling back to mock Whop service');
-      this.isMock = true;
-      this.isInitialized = true;
-      return true;
+      console.error('Failed to initialize Whop service:', error)
+      this.isMock = true
+      this.isInitialized = true
+      return true
     }
   }
 
   async createCourse(courseData) {
     if (!this.isInitialized) {
-      throw new Error('Whop SDK not initialized');
+      throw new Error('Whop service not initialized')
+    }
+
+    if (this.isMock) {
+      return this.createMockCourse(courseData)
     }
 
     try {
-      if (this.isMock) {
-        console.log('Creating course with mock data:', courseData.title);
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        return this.getMockCourse(courseData);
-      }
-
-      // Real Whop API call
-      const response = await fetch('https://api.whop.com/api/v2/courses', {
+      const response = await fetch(`${this.baseUrl}/courses`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
@@ -69,258 +60,232 @@ class WhopService {
         },
         body: JSON.stringify({
           title: courseData.title,
-          experience_id: this.userExperienceId,
-          description: courseData.description || '',
+          description: courseData.description,
+          company_id: this.companyId,
           status: 'draft'
         })
-      });
+      })
 
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        throw new Error(`Failed to create course: ${response.status}`)
       }
 
-      const course = await response.json();
-      console.log('Course created successfully:', course);
-      return course;
+      const course = await response.json()
+      return createWhopCourse(course)
     } catch (error) {
-      console.error('Error creating course:', error);
-      // Fallback to mock data if API fails
-      return this.getMockCourse(courseData);
+      console.error('Error creating course:', error)
+      return this.createMockCourse(courseData)
     }
-  }
-
-  getMockCourse(courseData) {
-    return {
-      id: `course_${Date.now()}`,
-      title: courseData.title,
-      experience_id: this.userExperienceId || 'mock_experience_id',
-      status: 'draft',
-      created_at: new Date().toISOString(),
-      url: `https://whop.com/courses/${Date.now()}`
-    };
-  }
-
-  async createChapter(chapterData) {
-    if (!this.isInitialized) {
-      throw new Error('Whop SDK not initialized');
-    }
-
-    if (this.isMock) {
-      return this.getMockChapter(chapterData);
-    }
-
-    try {
-      const chapter = await this.api.courses.chapters.create({
-        course_id: chapterData.courseId,
-        title: chapterData.title,
-        order: chapterData.order || 1
-      });
-      
-      console.log('Chapter created successfully:', chapter);
-      return chapter;
-    } catch (error) {
-      console.error('Error creating chapter:', error);
-      return this.getMockChapter(chapterData);
-    }
-  }
-
-  getMockChapter(chapterData) {
-    return {
-      id: `chapter_${Date.now()}`,
-      course_id: chapterData.courseId,
-      title: chapterData.title,
-      order: chapterData.order || 1,
-      created_at: new Date().toISOString()
-    };
-  }
-
-  async createLesson(lessonData) {
-    if (!this.isInitialized) {
-      throw new Error('Whop SDK not initialized');
-    }
-
-    if (this.isMock) {
-      return this.getMockLesson(lessonData);
-    }
-
-    try {
-      const lesson = await this.api.courses.lessons.create({
-        chapter_id: lessonData.chapterId,
-        title: lessonData.title,
-        content: lessonData.content,
-        lesson_type: lessonData.lessonType || 'text',
-        order: lessonData.order || 1
-      });
-      
-      console.log('Lesson created successfully:', lesson);
-      return lesson;
-    } catch (error) {
-      console.error('Error creating lesson:', error);
-      return this.getMockLesson(lessonData);
-    }
-  }
-
-  getMockLesson(lessonData) {
-    return {
-      id: `lesson_${Date.now()}`,
-      chapter_id: lessonData.chapterId,
-      title: lessonData.title,
-      content: lessonData.content,
-      lesson_type: lessonData.lessonType || 'text',
-      order: lessonData.order || 1,
-      created_at: new Date().toISOString()
-    };
   }
 
   async createProduct(productData) {
     if (!this.isInitialized) {
-      throw new Error('Whop SDK not initialized');
+      throw new Error('Whop service not initialized')
     }
 
     if (this.isMock) {
-      return this.getMockProduct(productData);
+      return this.createMockProduct(productData)
     }
 
     try {
-      const product = await this.api.products.create({
-        name: productData.name,
-        price: productData.price,
-        description: productData.description,
-        delivery_type: productData.delivery_type,
-        experience_id: this.userExperienceId,
-        status: 'active'
-      });
-      
-      console.log('Product created successfully:', product);
-      return product;
+      const response = await fetch(`${this.baseUrl}/products`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          name: productData.name,
+          description: productData.description,
+          price: productData.price,
+          company_id: this.companyId,
+          status: 'active'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to create product: ${response.status}`)
+      }
+
+      const product = await response.json()
+      return createWhopProduct(product)
     } catch (error) {
-      console.error('Error creating product:', error);
-      return this.getMockProduct(productData);
+      console.error('Error creating product:', error)
+      return this.createMockProduct(productData)
     }
   }
 
-  getMockProduct(productData) {
-    return {
-      id: `product_${Date.now()}`,
-      name: productData.name,
-      price: productData.price,
-      description: productData.description,
-      delivery_type: productData.delivery_type,
-      experience_id: this.userExperienceId || 'mock_experience_id',
-      status: 'active',
-      created_at: new Date().toISOString(),
-      url: `https://whop.com/products/${Date.now()}`
-    };
+  async createChapter(courseId, chapterData) {
+    if (!this.isInitialized) {
+      throw new Error('Whop service not initialized')
+    }
+
+    if (this.isMock) {
+      return this.createMockChapter(courseId, chapterData)
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/courses/${courseId}/chapters`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: chapterData.title,
+          description: chapterData.description,
+          order: chapterData.order
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to create chapter: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error creating chapter:', error)
+      return this.createMockChapter(courseId, chapterData)
+    }
+  }
+
+  async createLesson(chapterId, lessonData) {
+    if (!this.isInitialized) {
+      throw new Error('Whop service not initialized')
+    }
+
+    if (this.isMock) {
+      return this.createMockLesson(chapterId, lessonData)
+    }
+
+    try {
+      const response = await fetch(`${this.baseUrl}/chapters/${chapterId}/lessons`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          title: lessonData.title,
+          content: lessonData.content,
+          order: lessonData.order,
+          type: lessonData.type || 'text'
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error(`Failed to create lesson: ${response.status}`)
+      }
+
+      return await response.json()
+    } catch (error) {
+      console.error('Error creating lesson:', error)
+      return this.createMockLesson(chapterId, lessonData)
+    }
   }
 
   async linkCourseToProduct(courseId, productId) {
     if (!this.isInitialized) {
-      throw new Error('Whop SDK not initialized');
+      throw new Error('Whop service not initialized')
     }
 
     if (this.isMock) {
-      return this.getMockLink(courseId, productId);
+      return this.createMockLink(courseId, productId)
     }
 
     try {
-      const link = await this.api.products.linkCourse({
-        product_id: productId,
-        course_id: courseId
-      });
-      
-      console.log('Course linked to product successfully:', link);
-      return link;
-    } catch (error) {
-      console.error('Error linking course to product:', error);
-      return this.getMockLink(courseId, productId);
-    }
-  }
+      const response = await fetch(`${this.baseUrl}/products/${productId}/courses`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          course_id: courseId
+        })
+      })
 
-  getMockLink(courseId, productId) {
-    return {
-      id: `link_${Date.now()}`,
-      product_id: productId,
-      course_id: courseId,
-      created_at: new Date().toISOString()
-    };
-  }
-
-  // Helper method to create complete course structure
-  async createCompleteCourse(courseContent, selectedConcept) {
-    try {
-      console.log('Starting complete course creation...');
-      
-      // Step 1: Create the main course
-      const course = await this.createCourse({
-        title: courseContent.course_title,
-        experience_id: this.userExperienceId
-      });
-      
-      console.log(`Course created: ${course.id}`);
-      
-      // Step 2: Create chapters and lessons
-      const createdChapters = [];
-      const createdLessons = [];
-      
-      for (let chapterIndex = 0; chapterIndex < courseContent.chapters.length; chapterIndex++) {
-        const chapterData = courseContent.chapters[chapterIndex];
-        
-        // Create chapter
-        const chapter = await this.createChapter({
-          courseId: course.id,
-          title: chapterData.chapter_title,
-          order: chapterIndex + 1
-        });
-        
-        createdChapters.push(chapter);
-        console.log(`Chapter ${chapterIndex + 1} created: ${chapter.id}`);
-        
-        // Create lessons for this chapter
-        for (let lessonIndex = 0; lessonIndex < chapterData.lessons.length; lessonIndex++) {
-          const lessonData = chapterData.lessons[lessonIndex];
-          
-          const lesson = await this.createLesson({
-            chapterId: chapter.id,
-            title: lessonData.lesson_title,
-            content: lessonData.content,
-            lessonType: 'text',
-            order: lessonIndex + 1
-          });
-          
-          createdLessons.push(lesson);
-          console.log(`Lesson ${lessonIndex + 1} in Chapter ${chapterIndex + 1} created: ${lesson.id}`);
-        }
+      if (!response.ok) {
+        throw new Error(`Failed to link course to product: ${response.status}`)
       }
-      
-      // Step 3: Create product
-      const product = await this.createProduct({
-        name: `${courseContent.course_title} - Premium Access`,
-        price: selectedConcept.price_usd,
-        description: courseContent.sales_page_copy.substring(0, 500) + '...',
-        delivery_type: 'course_access'
-      });
-      
-      console.log(`Product created: ${product.id}`);
-      
-      // Step 4: Link course to product
-      const link = await this.linkCourseToProduct(course.id, product.id);
-      console.log(`Course linked to product: ${link.id}`);
-      
-      return {
-        course,
-        chapters: createdChapters,
-        lessons: createdLessons,
-        product,
-        link,
-        courseUrl: course.url,
-        productUrl: product.url
-      };
-      
+
+      return await response.json()
     } catch (error) {
-      console.error('Error creating complete course:', error);
-      throw new Error(`Failed to create complete course: ${error.message}`);
+      console.error('Error linking course to product:', error)
+      return this.createMockLink(courseId, productId)
     }
+  }
+
+  // Mock implementations for development
+  createMockCourse(courseData) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(createWhopCourse({
+          id: `course_${Date.now()}`,
+          title: courseData.title,
+          description: courseData.description,
+          status: 'draft',
+          url: `https://whop.com/courses/${Date.now()}`
+        }))
+      }, 1000)
+    })
+  }
+
+  createMockProduct(productData) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve(createWhopProduct({
+          id: `product_${Date.now()}`,
+          name: productData.name,
+          price: productData.price,
+          description: productData.description,
+          status: 'active',
+          url: `https://whop.com/products/${Date.now()}`
+        }))
+      }, 1000)
+    })
+  }
+
+  createMockChapter(courseId, chapterData) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          id: `chapter_${Date.now()}`,
+          course_id: courseId,
+          title: chapterData.title,
+          description: chapterData.description,
+          order: chapterData.order
+        })
+      }, 500)
+    })
+  }
+
+  createMockLesson(chapterId, lessonData) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          id: `lesson_${Date.now()}`,
+          chapter_id: chapterId,
+          title: lessonData.title,
+          content: lessonData.content,
+          order: lessonData.order,
+          type: lessonData.type || 'text'
+        })
+      }, 500)
+    })
+  }
+
+  createMockLink(courseId, productId) {
+    return new Promise((resolve) => {
+      setTimeout(() => {
+        resolve({
+          id: `link_${Date.now()}`,
+          course_id: courseId,
+          product_id: productId
+        })
+      }, 500)
+    })
   }
 }
 
-export default new WhopService();
+export default new WhopService()
