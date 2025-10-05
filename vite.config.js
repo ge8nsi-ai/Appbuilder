@@ -1,7 +1,6 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
-import commonjs from '@rollup/plugin-commonjs'
 
 export default defineConfig({
   plugins: [
@@ -18,13 +17,6 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       external: [],
-      plugins: [
-        commonjs({
-          include: ['node_modules/**'],
-          requireReturnsDefault: 'auto',
-          transformMixedEsModules: true
-        })
-      ],
       output: {
         manualChunks: undefined,
         format: 'es',
