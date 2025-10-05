@@ -16,11 +16,12 @@ export default defineConfig({
     rollupOptions: {
       external: [],
       output: {
-        manualChunks: {
-          vendor: ['react', 'react-dom'],
-          ai: ['@google/generative-ai']
-        }
+        manualChunks: undefined,
+        format: 'es'
       }
+    },
+    commonjsOptions: {
+      include: [/node_modules/]
     }
   },
   define: {
@@ -35,5 +36,10 @@ export default defineConfig({
   },
   optimizeDeps: {
     include: ['react', 'react-dom']
+  },
+  esbuild: {
+    jsx: 'transform',
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment'
   }
 })
