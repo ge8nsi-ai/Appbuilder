@@ -8,7 +8,7 @@
       "config": {
         "distDir": "dist",
         "installCommand": "npm install --legacy-peer-deps --force",
-        "buildCommand": "NODE_ENV=production npm run build"
+        "buildCommand": "npm run build"
       }
     }
   ],
@@ -19,6 +19,7 @@
     }
   ],
   "env": {
+    "NODE_ENV": "production",
     "VITE_GEMINI_API_KEY": "AIzaSyBxKkT49hnFi6yXf7JVboFY-aLeHrHCOCI",
     "VITE_WHOP_API_KEY": "FoHGfL0aM2gt-2iFCaMVJMY2PB5ELbSG-a7Unsc2yHw",
     "VITE_WHOP_APP_ID": "app_6wVuNZSY5UaSTA",

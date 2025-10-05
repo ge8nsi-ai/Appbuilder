@@ -25,14 +25,15 @@ export default defineConfig({
     },
     commonjsOptions: {
       include: [/node_modules/],
-      transformMixedEsModules: true
+      transformMixedEsModules: true,
+      requireReturnsDefault: 'auto'
     },
     target: 'esnext',
     minify: 'esbuild'
   },
   define: {
     global: 'globalThis',
-    'process.env.NODE_ENV': '"production"'
+    'process.env.NODE_ENV': JSON.stringify(process.env.NODE_ENV || 'production')
   },
   envPrefix: ['VITE_', 'NEXT_PUBLIC_'],
   resolve: {

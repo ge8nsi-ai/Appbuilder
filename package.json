@@ -6,7 +6,6 @@
     "dev": "vite --port 3000",
     "build": "vite build",
     "preview": "vite preview --port 4173",
-    "vercel-build": "NODE_ENV=production vite build",
     "start": "vite preview --port 3000"
   },
   "dependencies": {
