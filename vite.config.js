@@ -17,12 +17,18 @@ export default defineConfig({
       external: [],
       output: {
         manualChunks: undefined,
-        format: 'es'
+        format: 'es',
+        entryFileNames: 'assets/[name].js',
+        chunkFileNames: 'assets/[name].js',
+        assetFileNames: 'assets/[name].[ext]'
       }
     },
     commonjsOptions: {
-      include: [/node_modules/]
-    }
+      include: [/node_modules/],
+      transformMixedEsModules: true
+    },
+    target: 'esnext',
+    minify: 'esbuild'
   },
   define: {
     global: 'globalThis',
@@ -32,14 +38,17 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src')
-    }
+    },
+    dedupe: ['react', 'react-dom']
   },
   optimizeDeps: {
-    include: ['react', 'react-dom']
+    include: ['react', 'react-dom'],
+    exclude: ['@google/generative-ai']
   },
   esbuild: {
     jsx: 'transform',
     jsxFactory: 'React.createElement',
-    jsxFragment: 'React.Fragment'
+    jsxFragment: 'React.Fragment',
+    target: 'esnext'
   }
 })
