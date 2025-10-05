@@ -1,11 +1,15 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import path from 'path'
+import { nodeResolve } from '@rollup/plugin-node-resolve'
+import commonjs from '@rollup/plugin-commonjs'
 
 export default defineConfig({
-  plugins: [react({
-    jsxRuntime: 'classic'
-  })],
+  plugins: [
+    react({
+      jsxRuntime: 'classic'
+    })
+  ],
   server: {
     port: 3000,
     host: true
@@ -15,6 +19,13 @@ export default defineConfig({
     sourcemap: false,
     rollupOptions: {
       external: [],
+      plugins: [
+        commonjs({
+          include: ['node_modules/**'],
+          requireReturnsDefault: 'auto',
+          transformMixedEsModules: true
+        })
+      ],
       output: {
         manualChunks: undefined,
         format: 'es',
