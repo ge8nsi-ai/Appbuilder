@@ -26,5 +26,16 @@ export default defineConfig({
   envPrefix: ['VITE_', 'NEXT_PUBLIC_', 'WHOP_'],
   optimizeDeps: {
     include: ['react', 'react-dom']
+  },
+  esbuild: {
+    jsx: 'transform',
+    jsxFactory: 'React.createElement',
+    jsxFragment: 'React.Fragment'
+  },
+  resolve: {
+    alias: {
+      'react/jsx-runtime': 'react/cjs/react-jsx-runtime.development.js',
+      'react/jsx-dev-runtime': 'react/cjs/react-jsx-dev-runtime.development.js'
+    }
   }
 })
